@@ -1,7 +1,7 @@
 {
     "name": "xy-image-viewer",
     "version": "0.0.1",
-    "description": "基于 React Hooks 的按钮组件",
+    "description": "基于 React Hooks 的图片查看组件",
     "types": "es/index.d.ts",
     "main": "es/index.js",
     "module": "es/index.js",
@@ -36,20 +36,31 @@
         "registry": "http://registry.npmjs.org/"
     },
     "devDependencies": {
+        "@testing-library/react": "^9.1.3",
+        "@types/classnames": "^2.2.9",
         "@types/jest": "24.0.6",
         "@types/node": "11.9.4",
         "@types/react": "16.8.2",
         "@types/react-dom": "16.8.2",
-        "@testing-library/react": "^9.1.3",
         "quick-react-scripts": "1.3.2",
-        "xy-manual-tools": "^0.1.65"
+        "xy-manual-tools": "^0.3.0"
     },
     "dependencies": {
+        "@fortawesome/fontawesome-svg-core": "^1.2.26",
+        "@fortawesome/free-solid-svg-icons": "^5.12.0",
+        "@fortawesome/react-fontawesome": "^0.1.8",
+        "classnames": "^2.2.6",
         "react": "^16.8.2",
-        "react-dom": "^16.8.2"
+        "react-dom": "^16.8.2",
+        "utils-hooks": "^0.0.77"
     },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/xueyou2000/xy-image-viewer.git"
+    },
+    "jest": {
+        "transformIgnorePatterns": [
+            "<rootDir>/node_modules/(?!(xy-*|utils-*|lodash-es))"
+        ]
     }
 }

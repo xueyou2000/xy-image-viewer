@@ -10,7 +10,7 @@
 
 # xy-image-viewer
 
-基于`React Hooks` + `typescript`的基础组件
+基于`React Hooks` + `typescript`的图片查看组件
 
 ## 安装
 
