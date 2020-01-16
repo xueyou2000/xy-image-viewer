@@ -1,7 +1,7 @@
 import { imageLoad } from "../utils";
 import { DefaultOptions } from "./DefaultValue";
 import { CanvasViewOptions } from "./interface";
-import { Point, ComplexTransform } from "../DrawEngine";
+import { Point, ComplexTransform, Matrix3x3 } from "../DrawEngine";
 
 /**
  * Canvas图片操作
@@ -141,6 +141,17 @@ export default class ImageCanvas {
     }
 
     /**
+     * 返回图像中心点
+     */
+    private imageCenter() {
+        const { image } = this;
+        if (!image) {
+            return new Point();
+        }
+        return new Point(-image.naturalWidth * 0.5, -image.naturalHeight * 0.5);
+    }
+
+    /**
      * 计算中心点
      * @param width 图片缩放后宽度
      * @param height 图片缩放后高度
@@ -148,6 +159,14 @@ export default class ImageCanvas {
     private calcCenterPoint(width: number, height: number) {
         const canvasCenter = this.centerPoint();
         return new Point(canvasCenter.x - width / 2, canvasCenter.y - height / 2);
+    }
+
+    /**
+     * 获取画布中心平移矩阵
+     */
+    private getCenterMatrix() {
+        const center = this.centerPoint();
+        return Matrix3x3.Translate(center.x, center.y);
     }
 
     /**
@@ -159,8 +178,7 @@ export default class ImageCanvas {
 
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const matrix = ct.UpdateMatrix();
-        console.log(matrix.toString());
+        const matrix = ct.UpdateMatrix(this.getCenterMatrix());
         ctx.setTransform(matrix.m11, matrix.m21, matrix.m12, matrix.m22, matrix.m13, matrix.m23);
         ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
         ctx.restore();
@@ -249,7 +267,7 @@ export default class ImageCanvas {
 
         const ct = new ComplexTransform();
         ct.SetScale(scale);
-        ct.SetPosition(canvas.width / 2 - width / 2, canvas.height / 2 - height / 2);
+        ct.SetPosition(-image.naturalWidth * 0.5, -image.naturalHeight * 0.5);
         return ct;
     }
 
@@ -266,6 +284,8 @@ export default class ImageCanvas {
         const scale: number = canvas.width / image.naturalWidth;
         const ct = new ComplexTransform();
         ct.SetScale(scale);
+        const center = this.imageCenter();
+        ct.SetPosition(center.x, center.y);
         this.doDraw(ct);
     }
 
@@ -273,7 +293,14 @@ export default class ImageCanvas {
      * 缩放到原始尺寸
      */
     public natural() {
-        this.doDraw(new ComplexTransform());
+        const { canvas, image } = this;
+        if (!this.exist) {
+            return;
+        }
+        const ct = new ComplexTransform();
+        const center = this.imageCenter();
+        ct.SetPosition(center.x, center.y);
+        this.doDraw(ct);
     }
 
     /**
@@ -292,8 +319,12 @@ export default class ImageCanvas {
         const width = image.naturalWidth * scale;
         const height = image.naturalHeight * scale;
 
-        const center = this.calcCenterPoint(width, height);
+        // const center = this.calcCenterPoint(width, height);
+        // ct.SetPosition(center.x, center.y);
+
+        const center = this.imageCenter();
         ct.SetPosition(center.x, center.y);
+
         this.doDraw(ct);
     }
 
@@ -313,7 +344,8 @@ export default class ImageCanvas {
         // 为了简单起见, 假设没有缩放
         // 双指的中心点, 应该为
 
-        ct.SetPosition(0, 0);
+        const center = this.imageCenter();
+        ct.SetPosition(center.x, center.y);
         this.doDraw(ct);
     }
 
@@ -328,12 +360,8 @@ export default class ImageCanvas {
         }
         const ct = this.ct.Copy();
         ct.SetAngle(angle);
-
-        // const width = image.naturalWidth * ct.GetScale();
-        // const height = image.naturalHeight * ct.GetScale();
-        // const p = this.centerPoint();
-        // ct.SetPosition(p.x + width, p.y - height / 2);
-
+        const center = this.imageCenter();
+        ct.SetPosition(center.x, center.y);
         this.doDraw(ct);
     }
 }

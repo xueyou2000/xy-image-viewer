@@ -22,6 +22,11 @@ export default class ComplexTransform {
     private scale: number = 1;
 
     /**
+     * 缓存变换矩阵
+     */
+    private matrix: Matrix3x3 = Matrix3x3.identityMatrix();
+
+    /**
      * 增加平移位置
      * @param x
      * @param y
@@ -95,19 +100,19 @@ export default class ComplexTransform {
     }
 
     /**
-     * 获取最新矩阵
-     * 平移矩阵 * 旋转矩阵  * 缩放矩阵
+     * 更新矩阵
+     * @param matrix 原始矩阵
+     * 记住一点：last specified, first  applied（后指定的变化，先被执行变化）
      */
-    public UpdateMatrix() {
+    public UpdateMatrix = (matrix: Matrix3x3 = Matrix3x3.identityMatrix()) => {
         const { potisiton, angle, scale } = this;
 
-        let m: Matrix3x3;
-        m = Matrix3x3.Translate(potisiton.x, potisiton.y);
-        m = Matrix3x3.Multiplies(m, Matrix3x3.Rotate(angle));
+        let m: Matrix3x3 = matrix;
         m = Matrix3x3.Multiplies(m, Matrix3x3.Scale(new Vector3(scale, scale, 1)));
-
+        m = Matrix3x3.Multiplies(m, Matrix3x3.Rotate(angle));
+        m = Matrix3x3.Multiplies(m, Matrix3x3.Translate(potisiton.x, potisiton.y));
         return m;
-    }
+    };
 
     /**
      * 各标量加法
