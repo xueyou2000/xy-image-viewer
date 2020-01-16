@@ -1,5 +1,4 @@
-import { CanvasViewOptions, ImageState } from "./interface";
-import Point from "./Point";
+import { CanvasViewOptions } from "./interface";
 
 /**
  * 默认配置

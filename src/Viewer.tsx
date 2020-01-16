@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import React, { useEffect, useRef, useState } from "react";
-import CanvasView from "./CanvasView";
+import ImageCanvas from "./ImageCanvas";
 import Loading from "./Loading";
 import { useMount } from "utils-hooks";
 
@@ -37,13 +37,13 @@ export interface ViewerProps {
 function Viewer(props: ViewerProps) {
     const { prefixCls = "xy-viewer", className, style, src, width, height } = props;
     const ref = useRef<HTMLCanvasElement>(null);
-    const canvasView = useRef<CanvasView>(null);
+    const imageCanvas = useRef<ImageCanvas>(null);
     const [loading, setLoading] = useState(false);
 
     useMount(() => {
         const canvas = ref.current;
         if (canvas) {
-            canvasView.current = new CanvasView(canvas, {
+            imageCanvas.current = new ImageCanvas(canvas, {
                 width,
                 height,
                 onStart: () => setLoading(true),
@@ -53,8 +53,8 @@ function Viewer(props: ViewerProps) {
     });
 
     useEffect(() => {
-        if (canvasView.current) {
-            canvasView.current.loadImage(src);
+        if (imageCanvas.current) {
+            imageCanvas.current.loadImage(src);
         }
     }, [src]);
 

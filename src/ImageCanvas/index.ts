@@ -1,14 +1,14 @@
 import { imageLoad } from "../utils";
 import { DefaultOptions } from "./DefaultValue";
 import { CanvasViewOptions } from "./interface";
-import Rect from "./Rect";
-import Point from "./Point";
-import Matrix3x3 from "./Matrix3x3";
+import { Point, ComplexTransform } from "../DrawEngine";
 
 /**
  * Canvas图片操作
+ * 注意: Canvas中有默认宽高350x150, 还有默认坐标轴, 左上角为原点, x右边增大, y下方增大. 而不是传统的y上方增大
+ * @see https://blog.csdn.net/qq_40556950/article/details/88955205
  */
-export default class CanvasView {
+export default class ImageCanvas {
     /**
      * 画布
      */
@@ -30,14 +30,14 @@ export default class CanvasView {
     private image: HTMLImageElement;
 
     /**
-     * 当前图片矩阵
+     * 当前操作信息
      */
-    private motionMatrix: Matrix3x3;
+    private motionCt: ComplexTransform;
 
     /**
-     * 动画结果图片矩阵
+     * 动画结果操作信息
      */
-    private matrix: Matrix3x3;
+    private ct: ComplexTransform;
 
     /**
      * 动画计时器句柄
@@ -53,11 +53,11 @@ export default class CanvasView {
         this.ctx = canvas.getContext("2d");
         this.options = Object.assign({}, DefaultOptions, options);
         this.image = null;
-        this.motionMatrix = Matrix3x3.identity();
-        this.matrix = Matrix3x3.identity();
+        this.motionCt = new ComplexTransform();
+        this.ct = new ComplexTransform();
         this.init();
 
-        (window as any).__canvasView = this;
+        (window as any).__imageCanvas = this;
     }
 
     /**
@@ -78,7 +78,7 @@ export default class CanvasView {
         const { canvas, options } = this;
         canvas.width = options.fullScreen ? window.innerWidth : options.width;
         canvas.height = options.fullScreen ? window.innerHeight : options.height;
-        this.toFit();
+        this.fit();
     };
 
     /**
@@ -86,7 +86,7 @@ export default class CanvasView {
      * @param src 图片地址
      */
     public loadImage(src: string) {
-        const { canvas, options } = this;
+        const { options } = this;
 
         if (!src) {
             this.drawTips("暂无图片");
@@ -102,9 +102,9 @@ export default class CanvasView {
                 options.onLoad();
             }
             this.image = image;
-            this.motionMatrix = this.fit();
-            this.matrix = this.fit();
-            this.drawImage(this.matrix);
+            this.motionCt = this.getFitCt();
+            this.ct = this.motionCt.Copy();
+            this.drawImage(this.ct);
         });
     }
 
@@ -141,14 +141,26 @@ export default class CanvasView {
     }
 
     /**
-     * 绘制图片并应用矩阵
-     * @param matrix
+     * 计算中心点
+     * @param width 图片缩放后宽度
+     * @param height 图片缩放后高度
      */
-    public drawImage(matrix: Matrix3x3) {
+    private calcCenterPoint(width: number, height: number) {
+        const canvasCenter = this.centerPoint();
+        return new Point(canvasCenter.x - width / 2, canvasCenter.y - height / 2);
+    }
+
+    /**
+     * 绘制图片并应用变换矩阵
+     * @param ct
+     */
+    public drawImage(ct: ComplexTransform) {
         const { ctx, canvas, image } = this;
 
         ctx.save();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const matrix = ct.UpdateMatrix();
+        console.log(matrix.toString());
         ctx.setTransform(matrix.m11, matrix.m21, matrix.m12, matrix.m22, matrix.m13, matrix.m23);
         ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
         ctx.restore();
@@ -156,39 +168,40 @@ export default class CanvasView {
 
     /**
      * 动画绘制图像
-     * @param from 当前矩阵
-     * @param to 目标矩阵
+     * @param from 当前变换信息
+     * @param to 目标变换信息
      * @param duration 动画时长
      */
-    public animationDrawImage(from: Matrix3x3, to: Matrix3x3, duration: number = 300) {
+    public animationDrawImage(from: ComplexTransform, to: ComplexTransform, duration: number = 300) {
         if (duration <= 0) {
-            this.motionMatrix = to;
+            this.motionCt = to;
+            this.ct = to;
             this.drawImage(to);
             return;
         }
 
-        const difference = to.sub(from);
-        const perTick = difference.divisionByNum(duration).multipliByNum(10);
+        const difference = ComplexTransform.Subtracts(to, from);
+        const perTick = difference.Divides(duration).Multiplie(10);
 
         this.timeHandler = window.requestAnimationFrame(() => {
-            this.motionMatrix = from.add(perTick);
-            this.drawImage(this.motionMatrix);
-            this.animationDrawImage(this.motionMatrix, to, duration - 10);
+            this.motionCt = ComplexTransform.Adds(from, perTick);
+            this.drawImage(this.motionCt);
+            this.animationDrawImage(this.motionCt, to, duration - 10);
         });
     }
 
     /**
      * 执行绘图操作
-     * @param matrix
+     * @param ct 变换信息
      */
-    private doDraw(matrix: Matrix3x3) {
+    private doDraw(ct: ComplexTransform) {
         if (!this.exist) {
             return;
         }
+        this.ct = ct;
         // 中断上次未完成的动画
         window.cancelAnimationFrame(this.timeHandler);
-        this.matrix = matrix;
-        this.animationDrawImage(this.motionMatrix, this.matrix);
+        this.animationDrawImage(this.motionCt, this.ct);
     }
 
     /**
@@ -202,15 +215,15 @@ export default class CanvasView {
     /**
      * 执行适应缩放
      */
-    public toFit() {
-        this.doDraw(this.fit());
+    public fit() {
+        this.doDraw(this.getFitCt());
     }
 
     /**
-     * 获取适应矩阵
+     * 获取适应变换信息
      * @description 图像适应画布, 确保图像完整显示在画布中, 并居中显示
      */
-    private fit() {
+    private getFitCt() {
         const { canvas, image } = this;
         if (!this.exist) {
             return;
@@ -234,99 +247,93 @@ export default class CanvasView {
             scale = height / image.naturalHeight;
         }
 
-        // 缩放和平移操作映射到矩阵
-        let matrix: Matrix3x3 = Matrix3x3.identity();
-        // 平移操作, 图像居中在画布
-        matrix = matrix.multipli(matrix.copy().translation(canvas.width / 2 - width / 2, canvas.height / 2 - height / 2));
-        // 缩放操作
-        matrix = matrix.multipli(matrix.copy().scale(scale, scale));
-        return matrix;
+        const ct = new ComplexTransform();
+        ct.SetScale(scale);
+        ct.SetPosition(canvas.width / 2 - width / 2, canvas.height / 2 - height / 2);
+        return ct;
     }
 
     /**
-     * 执行满屏缩放
-     */
-    public toSpread() {
-        this.doDraw(this.spread());
-    }
-
-    /**
-     * 获取铺满画布矩阵
+     * 缩放到满屏
      * @description 等比缩放以宽度铺满画布, 并居中显示
      */
-    private spread() {
+    public spread() {
         const { canvas, image } = this;
         if (!this.exist) {
             return;
         }
-
         // 获取缩放比例
         const scale: number = canvas.width / image.naturalWidth;
-        const height = canvas.width / this.ratio();
-        // 缩放和平移操作映射到矩阵
-        let matrix: Matrix3x3 = Matrix3x3.identity();
-        // 缩放操作
-        matrix = matrix.multipli(matrix.copy().scale(scale, scale));
-        return matrix;
+        const ct = new ComplexTransform();
+        ct.SetScale(scale);
+        this.doDraw(ct);
     }
 
     /**
-     * 执行缩放到原始尺寸
+     * 缩放到原始尺寸
      */
-    public toNatural() {
-        this.doDraw(this.natural());
-    }
-
-    /**
-     * 获取原始尺寸矩阵
-     * @description 不进行缩放, 仅仅平移到画布中心
-     */
-    private natural() {
-        const { canvas, image } = this;
-        if (!this.exist) {
-            return;
-        }
-
-        // 缩放和平移操作映射到矩阵
-        let matrix: Matrix3x3 = Matrix3x3.identity();
-        // 平移操作, 图像居中在画布
-        matrix = matrix.multipli(matrix.copy().translation(canvas.width / 2 - image.naturalWidth / 2, 0));
-        return matrix;
+    public natural() {
+        this.doDraw(new ComplexTransform());
     }
 
     /**
      * 缩放图像
-     * @param scale 缩放比率, 范围 0 ~ 1
-     * @param point 缩放中心店, 默认为画布中心
+     * @param scale 缩放比例
      */
-    private zoom(scale: number, point: Point = this.centerPoint()) {}
+    public zoom(scale: number) {
+        const { image, canvas } = this;
+        if (!this.exist) {
+            return;
+        }
+        const ct = this.ct.Copy();
+        ct.SetScale(scale);
 
-    /**
-     * 旋转图像
-     * 当前矩阵 * 缩放矩阵 * 旋转矩阵 * 平移矩阵 * 刚才我说的那个平移矩阵
-     * @description 注意: 根据当前矩阵变换计算, 也就是说 rotate(45) 之后, 想还原就是 rotate(-45) 而不是 rotate(0)
-     * @param agnle 旋转角度, 范围 0 ~ 360
-     */
-    public rotate(agnle: number) {
-        const r = Matrix3x3.identity().rotation(agnle);
-        const t = Matrix3x3.identity().translation(this.centerPoint().x, this.centerPoint().y);
-        const offset = Matrix3x3.identity().translation(-this.image.naturalWidth * 0.5, -this.image.naturalHeight * 0.5);
+        // 计算缩放后的图片尺寸
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
 
-        this.doDraw(
-            this.matrix
-                .multipli(r)
-                .multipli(t)
-                .multipli(offset),
-        );
+        const center = this.calcCenterPoint(width, height);
+        ct.SetPosition(center.x, center.y);
+        this.doDraw(ct);
     }
 
     /**
-     * 水平翻转
+     * 指定中心点缩放图像
+     * @param scale 缩放比例
+     * @param point 缩放中心点
      */
-    public flipX() {}
+    public zoomByPoint(scale: number, point: Point) {
+        const { image } = this;
+        if (!this.exist) {
+            return;
+        }
+        const ct = this.ct.Copy();
+        // ct.SetScale(scale);
+
+        // 为了简单起见, 假设没有缩放
+        // 双指的中心点, 应该为
+
+        ct.SetPosition(0, 0);
+        this.doDraw(ct);
+    }
 
     /**
-     * 垂直翻转
+     * 旋转图像
+     * @param angle
      */
-    public flipY() {}
+    public rotate(angle: number) {
+        const { image } = this;
+        if (!this.exist) {
+            return;
+        }
+        const ct = this.ct.Copy();
+        ct.SetAngle(angle);
+
+        // const width = image.naturalWidth * ct.GetScale();
+        // const height = image.naturalHeight * ct.GetScale();
+        // const p = this.centerPoint();
+        // ct.SetPosition(p.x + width, p.y - height / 2);
+
+        this.doDraw(ct);
+    }
 }
