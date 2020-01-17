@@ -21,4 +21,22 @@ export default class Point {
         this.x = x;
         this.y = y;
     }
+
+    /**
+     * 点加法
+     * @param a
+     * @param b
+     */
+    public static Adds(a: Point, b: Point) {
+        return new Point(a.x + b.x, a.y + b.y);
+    }
+
+    /**
+     * 点减法
+     * @param a
+     * @param b
+     */
+    public static Subtracts(a: Point, b: Point) {
+        return new Point(a.x - b.x, a.y - b.y);
+    }
 }

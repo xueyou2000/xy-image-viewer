@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ImageCanvas from "./ImageCanvas";
 import Loading from "./Loading";
 import { useMount } from "utils-hooks";
+import { CanvasViewOptions } from "./ImageCanvas/interface";
 
 export interface ViewerProps {
     /**
@@ -29,13 +30,17 @@ export interface ViewerProps {
      * 画布高度
      */
     height?: number;
+    /**
+     * 选项
+     */
+    options?: CanvasViewOptions;
 }
 
 /**
  * Canvas图像画布
  */
 function Viewer(props: ViewerProps) {
-    const { prefixCls = "xy-viewer", className, style, src, width, height } = props;
+    const { prefixCls = "xy-viewer", className, style, src, width, height, options } = props;
     const ref = useRef<HTMLCanvasElement>(null);
     const imageCanvas = useRef<ImageCanvas>(null);
     const [loading, setLoading] = useState(false);
@@ -43,12 +48,15 @@ function Viewer(props: ViewerProps) {
     useMount(() => {
         const canvas = ref.current;
         if (canvas) {
-            imageCanvas.current = new ImageCanvas(canvas, {
-                width,
-                height,
-                onStart: () => setLoading(true),
-                onLoad: () => setLoading(false),
-            });
+            imageCanvas.current = new ImageCanvas(
+                canvas,
+                Object.assign({}, options, {
+                    width,
+                    height,
+                    onStart: () => setLoading(true),
+                    onLoad: () => setLoading(false),
+                }),
+            );
         }
     });
 

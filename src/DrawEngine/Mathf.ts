@@ -77,8 +77,7 @@ export default class Mathf {
             value = min;
         } else if (value > max) {
             value = max;
-        } else {
-            return value;
         }
+        return value;
     }
 }
