@@ -80,4 +80,17 @@ export default class Mathf {
         }
         return value;
     }
+
+    /**
+     * 获取旋转后的矩形
+     * @param width 宽度
+     * @param height 高度
+     * @param angle 旋转角度
+     */
+    public static CalcRotateRect(width: number, height: number, angle: number) {
+        const _width = Math.cos((90 - angle) * (Math.PI / 180)) * height + Math.cos(angle * (Math.PI / 180)) * width;
+        const _height = Math.sin(angle * (Math.PI / 180)) * width + Math.cos((90 - (90 - angle)) * (Math.PI / 180)) * height;
+
+        return { width: _width, height: _height };
+    }
 }

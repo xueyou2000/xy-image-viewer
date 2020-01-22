@@ -1,6 +1,7 @@
 import Vector3 from "./Vector3";
 import Matrix3x3 from "./Matrix3x3";
-import { Point } from ".";
+import { Point, Mathf } from ".";
+import { Rect } from "./interface";
 
 /**
  * 复合变换信息
@@ -193,6 +194,15 @@ export default class ComplexTransform {
         this.angle /= num;
         this.scale /= num;
         return this;
+    }
+
+    /**
+     * 获取变换后的矩形
+     */
+    public GetPresentRect(width: number, height: number): Rect {
+        const { angle, scale } = this;
+        const rect = Mathf.CalcRotateRect(width, height, angle);
+        return { x: 0, y: 0, width: rect.width * scale, height: rect.height * scale };
     }
 
     /**

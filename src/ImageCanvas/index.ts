@@ -409,6 +409,7 @@ export default class ImageCanvas {
         if (!this.exist) {
             return new ComplexTransform();
         }
+
         // 获取缩放比例
         let scale: number;
         if (image.naturalWidth > image.naturalHeight) {
@@ -418,6 +419,8 @@ export default class ImageCanvas {
             // 根据高度缩放
             scale = Math.min(canvas.height, image.naturalHeight) / image.naturalHeight;
         }
+
+        this.fitScalc = scale;
 
         const canvasCenter = this.centerPoint();
         const ct = new ComplexTransform();
